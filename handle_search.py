@@ -143,7 +143,7 @@ def run_full_search(usernames, log):
 			time.sleep((rate_limit_counter + 1) * (60 + random_element))
 		else:  # something went wrong, exit gracefully
 			return results, status
-	return results, None
+	return results, 200
 
 
 def main():
