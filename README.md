@@ -1,5 +1,7 @@
 # youtube-handles
-programmatically check availability of youtube handles
+_programmatically check availability of youtube handles_
+* use your own youtube account, no password required (see [disclaimer](https://github.com/maxtheaxe/youtube-handles/edit/main/README.md#disclaimers--notes))
+* support for force logout, rate limiting
 
 ## Motivations
 * I got distracted

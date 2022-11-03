@@ -29,6 +29,7 @@ def import_usernames(filename, log):
 		for row in csv_file:
 			if len(row[:-1]) >= 3:  # don't import usernames less than three chars
 				usernames.append(row[:-1])
+				num_names += 1
 	if log:
 		print(f"successfully imported {num_names} usernames from {filename}")
 	return usernames
