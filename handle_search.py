@@ -4,7 +4,9 @@ from haralyzer import HarParser
 from json import loads
 import os
 import pickle
+from random import randint
 import requests
+import time
 
 
 def get_latest_har(log):
@@ -30,6 +32,15 @@ def import_usernames(filename, log):
 	if log:
 		print(f"successfully imported {num_names} usernames from {filename}")
 	return usernames
+
+
+def save_results(results, log):
+	with open("results.csv", "w", encoding="UTF8", newline="") as f:
+		writer = csv.writer(f)
+		writer.writerow(("username", "available"))
+		writer.writerows(results)
+	if log:
+		print(f"successfully saved {len(results)} results")
 
 
 def convert_headers(headers, want_cookies):
@@ -58,7 +69,7 @@ def import_request(filename, want_cookies):
 def load_session(log=False):
 	session = requests.session()  # or an existing session
 	try:  # check if we've already saved updated cookies
-		with open('cookies.pickle', 'rb') as f:
+		with open("cookies.pickle", "rb") as f:
 			session.cookies.update(pickle.load(f))
 	except FileNotFoundError:  # otherwise, use those from HAR
 		return session, False
@@ -68,7 +79,7 @@ def load_session(log=False):
 
 
 def save_session(session, log):
-	with open('cookies.pickle', 'wb') as f:
+	with open("cookies.pickle", "wb") as f:
 		pickle.dump(session.cookies, f)
 	if log:
 		print("cookies successfully saved")
@@ -80,27 +91,26 @@ def delete_session(log):
 		print("cookies successfully removed")
 
 
-def perform_request(session, url, headers, payload, username, log):
+def check_username(session, url, headers, payload, username, log):
 	payload["handle"] = username  # replace previous username with desired search term
 	response = session.post(url, headers=headers, json=payload)
-	response_data = loads(response.content.decode("latin-1"))
+	response_data = loads(response.content)
 	# print("response data:\n", response_data)
 	save_session(session, log)
 	# print(f"session cookies:\n{session.cookies}")
+	status = response.status_code  # for passing additional info to main loop of program
 	try:
 		if response_data["result"]["channelHandleValidationResultRenderer"]["result"] \
 				== "CHANNEL_HANDLE_VALIDATION_RESULT_OK":
-			return True, session
+			return True, session, status
 	except KeyError as err:
-		print(err)
-		if (err.args[0] == "result") and (response.status_code == 401):
-			delete_session(log) # old cookies are stale, we'll get new ones from HAR
-			raise Exception("time to download a new HAR file!" + \
-							" (youtube logged you out, be careful)")
+		if response.status_code == 401:
+			print("logged out—saving and shutting down")
+		elif response.status_code == 429:
+			print("rate limit! sleeping...")
 		else:
-			raise Exception("unknown error occurred—youtube must've changed their API" + \
-							" (please tell me!)")
-	return False, session
+			print(f"unknown error #{status}, save this message: {response.content}")
+	return False, session, status
 
 
 def run_full_search(usernames, log):
@@ -108,8 +118,13 @@ def run_full_search(usernames, log):
 	session, session_existed = load_session()
 	# if session already existed, we don't collect cookies from HAR
 	url, headers, payload = import_request(latest_har, (not session_existed))
+	results = []
+	rate_limit_counter = 0
 	for username in usernames:
-		success, session = perform_request(session, url, headers, payload, username, log)
+		random_element = randint(0, 9)  # add randomness to sleep time
+		time.sleep(random_element)
+		success, session, status = check_username(session, url, headers, payload, username, log)
+		results.append((username, success))
 		if log:
 			success_string = ""
 			if not success:
@@ -117,13 +132,37 @@ def run_full_search(usernames, log):
 			# only print "not" if it fails
 			# (tried to use ternary operator in fstring, but it looked gross)
 			print(f"the handle '{username}' is {success_string}available")
+		if status == 200:
+			continue  # business as usual
+		elif status == 429:  # rate limit, slowing down
+			rate_limit_counter += 1
+			# if already limit 10 times (even with delays), exit
+			if rate_limit_counter >= 10:
+				return results, status
+			# sleep for progressively more time (with random element)
+			time.sleep((rate_limit_counter + 1) * (60 + random_element))
+		else:  # something went wrong, exit gracefully
+			return results, status
+	return results, None
 
 
 def main():
 	log = True  # set to true if you want to print program logs
-	usernames = ["smelly", "tiola1396u", "lolman"]
-	# usernames = import_usernames("usernames.csv")
-	run_full_search(usernames, log)
+	# usernames = ["smelly", "tiola1396u", "lolman"]
+	usernames = import_usernames("usernames.csv", log)
+	results, status = run_full_search(usernames, log)
+	save_results(results, log)  # log what we have, regardless of whether completed
+	if status != 200:  # if something went wrong, search exited early
+		if status == 401:  # logged out condition
+			delete_session(log)  # old cookies are stale, we'll get new ones from HAR
+			raise Exception("time to download a new HAR file!" + \
+							" (youtube logged you out, be careful)")
+		elif status == 429:  # rate limit condition
+			raise Exception("you've been rate limited 10 times already!" + \
+							" if I were you, I'd take the rest of the day off")
+		else:  # unknown error condition
+			raise Exception("unknown error occurred—youtube must've changed their API" + \
+							" (please tell me!)")
 
 
 if __name__ == "__main__":
