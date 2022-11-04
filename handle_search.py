@@ -48,10 +48,10 @@ def convert_headers(headers, want_cookies, log):
 	# originally compressed, which postman and ff handled automatically
 	# caused quite the headache figuring out why it couldn't be decoded
 	unwanted_headers = ["Content-Length", "Accept-Encoding"]
-	if not want_cookies:
-		if log:
-			print("not using cookies from HAR file")
-		unwanted_headers.append("Cookie")
+	# if not want_cookies:
+	# 	if log:
+	# 		print("not using cookies from HAR file")
+	# 	unwanted_headers.append("Cookie")
 	new_headers = {}
 	for kvp in headers:
 		if kvp["name"] not in unwanted_headers:
@@ -100,9 +100,7 @@ def check_username(session, url, headers, payload, username, log):
 	payload["handle"] = username  # replace previous username with desired search term
 	response = session.post(url, headers=headers, json=payload)
 	response_data = loads(response.content)
-	# print("response data:\n", response_data)
-	save_session(session, log)
-	# print(f"session cookies:\n{session.cookies}")
+	# save_session(session, log)  # temporarily disabled
 	status = response.status_code  # for passing additional info to main loop of program
 	try:
 		if response_data["result"]["channelHandleValidationResultRenderer"]["result"] \
@@ -161,7 +159,7 @@ def main():
 	save_results(results, log)  # log what we have, regardless of whether completed
 	if status != 200:  # if something went wrong, search exited early
 		if status == 401:  # logged out condition
-			delete_session(log)  # old session is stale, we'll get new one from HAR
+			# delete_session(log)  # old session is stale, we'll get new one from HAR
 			raise Exception("time to download a new HAR file!" + \
 							" (youtube logged you out, be careful)")
 		elif status == 429:  # rate limit condition
