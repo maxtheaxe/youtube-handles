@@ -17,15 +17,16 @@ _programmatically check availability of youtube handles_
 * Install the dependencies (`pip install -r requirements.txt`)
 * Create `usernames.csv` (one username per line)
 * Navigate to [youtube.com/handle](https://www.youtube.com/handle), click 'change/choose handle'
-* Open network inspector in your browser (press 'F12', then click the 'network' tab)
+* Open network inspector in ~~your browser~~ _firefox, for now_ (press 'F12', then click the 'network' tab)
 * Change your username in the input box
 * Right click on the request in network inspector, and select 'save all as HAR'
 * Move the HAR file into your youtube-handles folder
 
 ## Usage
-* Run `handle_search.py`
+* Run _handle_search.py_ (`python3 handle_search.py`)
 
 ## Disclaimers & Notes
-* I am not responsible if you abuse this and end up getting your account banned (I recommend using one you don't care about)
+* I am not responsible if you end up getting your account banned (I recommend using one you don't care about)
 * Be considerate—save some usernames for the rest of us
 * Feel free to submit pull requests
+* Fresh Google Accounts won't work
