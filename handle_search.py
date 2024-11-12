@@ -95,25 +95,39 @@ def delete_session(log):
 	if log:
 		print("session successfully removed")
 
+def check_get_status(url):
+    try:
+        response = requests.get(url)
+        status = response.status_code
+        if status == 200:
+            return status 
+        elif status == 404:
+            return status
+    except requests.exceptions.RequestException as e:
+        print(f"Error: {e}")
 
 def check_username(session, url, headers, payload, username, log):
 	payload["handle"] = username  # replace previous username with desired search term
-	response = session.post(url, headers=headers, json=payload)
-	response_data = loads(response.content)
-	# save_session(session, log)  # temporarily disabled
-	status = response.status_code  # for passing additional info to main loop of program
-	try:
-		if response_data["result"]["channelHandleValidationResultRenderer"]["result"] \
-				== "CHANNEL_HANDLE_VALIDATION_RESULT_OK":
-			return True, session, status
-	except KeyError as err:
-		if response.status_code == 401:
-			print("logged out—saving and shutting down")
-		elif response.status_code == 429:
-			print("rate limit! sleeping for", end="")
-		else:
-			print(f"unknown error #{status}, save this message: {response.content}")
-	return False, session, status
+	status = 200
+	if check_get_status(f"https://www.youtube.com/@{username}") == 200: 
+		return False, session, status 
+	else:
+		response = session.post(url, headers=headers, json=payload)
+		response_data = loads(response.content)
+		# save_session(session, log)  # temporarily disabled
+		status = response.status_code  # for passing additional info to main loop of program
+		try:
+			if response_data["result"]["channelHandleValidationResultRenderer"]["result"] \
+					== "CHANNEL_HANDLE_VALIDATION_RESULT_OK":
+				return True, session, status
+		except KeyError as err:
+			if response.status_code == 401:
+				print("logged out—saving and shutting down")
+			elif response.status_code == 429:
+				print("rate limit! sleeping for", end="")
+			else:
+				print(f"unknown error #{status}, save this message: {response.content}")
+		return False, session, status
 
 
 def run_full_search(usernames, log):
